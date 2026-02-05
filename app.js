@@ -1,6 +1,6 @@
 /**
  * Logo Generator - Main Application Logic
- * Handles image upload, processing, AI/PDF conversion, and export
+ * Handles image upload, processing, AI/PDF conversion with artboard selection, and export
  */
 
 // Initialize PDF.js worker
@@ -19,10 +19,15 @@ const fileName = document.getElementById('fileName');
 const clearBtn = document.getElementById('clearBtn');
 const previewCanvas = document.getElementById('previewCanvas');
 const saveBtn = document.getElementById('saveBtn');
+const artboardSection = document.getElementById('artboardSection');
+const artboardGrid = document.getElementById('artboardGrid');
+const artboardCount = document.getElementById('artboardCount');
 
 // State
 let currentFileName = '';
 let hasImage = false;
+let currentPDF = null;
+let selectedArtboard = null;
 
 // Canvas Context
 const ctx = previewCanvas.getContext('2d');
@@ -96,6 +101,9 @@ function handleFile(file) {
     // Add loading state
     uploadArea.classList.add('loading');
 
+    // Hide artboard section initially
+    hideArtboardSection();
+
     // Process based on file type
     if (extension === 'pdf' || extension === 'ai') {
         processPDFFile(file);
@@ -135,6 +143,7 @@ function processImageFile(file) {
 
 /**
  * Process PDF/AI file using PDF.js
+ * Shows artboard selector if multiple pages exist
  * @param {File} file - The PDF or AI file
  */
 async function processPDFFile(file) {
@@ -143,9 +152,151 @@ async function processPDFFile(file) {
 
         // Load PDF document
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        currentPDF = pdf;
 
-        // Get first page
-        const page = await pdf.getPage(1);
+        const numPages = pdf.numPages;
+
+        if (numPages > 1) {
+            // Multiple pages - show artboard selector
+            await showArtboardSelector(pdf, numPages);
+            uploadArea.classList.remove('loading');
+        } else {
+            // Single page - render directly
+            await renderPDFPage(pdf, 1);
+            uploadArea.classList.remove('loading');
+        }
+
+    } catch (error) {
+        console.error('PDF/AI processing error:', error);
+
+        let errorMessage = 'PDF/AI 파일 처리 중 오류가 발생했습니다.';
+        if (error.message && error.message.includes('Invalid PDF')) {
+            errorMessage = 'AI 파일이 PDF 호환 모드로 저장되지 않았습니다.\nAdobe Illustrator에서 "PDF 호환 파일 만들기" 옵션을 활성화하여 다시 저장해주세요.';
+        }
+
+        alert(errorMessage);
+        uploadArea.classList.remove('loading');
+        clearCanvas();
+    }
+}
+
+/**
+ * Show artboard selector with thumbnails
+ * @param {PDFDocumentProxy} pdf - The PDF document
+ * @param {number} numPages - Number of pages/artboards
+ */
+async function showArtboardSelector(pdf, numPages) {
+    // Clear existing thumbnails
+    artboardGrid.innerHTML = '';
+    selectedArtboard = null;
+
+    // Update count
+    artboardCount.textContent = `(${numPages}개)`;
+
+    // Create thumbnails for each page
+    for (let i = 1; i <= numPages; i++) {
+        const thumbnailContainer = document.createElement('div');
+        thumbnailContainer.className = 'artboard-item';
+        thumbnailContainer.dataset.page = i;
+
+        const thumbnailWrapper = document.createElement('div');
+        thumbnailWrapper.className = 'artboard-thumbnail';
+
+        const label = document.createElement('div');
+        label.className = 'artboard-label';
+        label.textContent = `대지 ${i}`;
+
+        thumbnailContainer.appendChild(thumbnailWrapper);
+        thumbnailContainer.appendChild(label);
+
+        // Add click handler
+        thumbnailContainer.addEventListener('click', () => selectArtboard(thumbnailContainer, i));
+
+        artboardGrid.appendChild(thumbnailContainer);
+
+        // Generate thumbnail asynchronously
+        generateThumbnail(pdf, i, thumbnailWrapper);
+    }
+
+    // Show artboard section
+    artboardSection.classList.add('visible');
+}
+
+/**
+ * Generate thumbnail for a PDF page
+ * @param {PDFDocumentProxy} pdf - The PDF document
+ * @param {number} pageNum - Page number
+ * @param {HTMLElement} container - Container element for thumbnail
+ */
+async function generateThumbnail(pdf, pageNum, container) {
+    try {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1 });
+
+        // Calculate scale for thumbnail (max 200px width)
+        const maxWidth = 200;
+        const scale = maxWidth / viewport.width;
+        const scaledViewport = page.getViewport({ scale });
+
+        // Create canvas for thumbnail
+        const canvas = document.createElement('canvas');
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
+        const ctx = canvas.getContext('2d');
+
+        // Fill white background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Render page
+        await page.render({
+            canvasContext: ctx,
+            viewport: scaledViewport
+        }).promise;
+
+        // Create image from canvas
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/png');
+        img.alt = `대지 ${pageNum}`;
+
+        container.appendChild(img);
+
+    } catch (error) {
+        console.error(`Error generating thumbnail for page ${pageNum}:`, error);
+        container.innerHTML = '<span style="color: #94a3b8; font-size: 12px;">로드 실패</span>';
+    }
+}
+
+/**
+ * Select an artboard and render it
+ * @param {HTMLElement} element - The clicked artboard element
+ * @param {number} pageNum - Page number to render
+ */
+async function selectArtboard(element, pageNum) {
+    // Remove previous selection
+    const previousSelected = artboardGrid.querySelector('.selected');
+    if (previousSelected) {
+        previousSelected.classList.remove('selected');
+    }
+
+    // Add selection to clicked element
+    element.classList.add('selected');
+    selectedArtboard = pageNum;
+
+    // Render the selected page
+    if (currentPDF) {
+        await renderPDFPage(currentPDF, pageNum);
+    }
+}
+
+/**
+ * Render a specific PDF page to the main canvas
+ * @param {PDFDocumentProxy} pdf - The PDF document
+ * @param {number} pageNum - Page number to render
+ */
+async function renderPDFPage(pdf, pageNum) {
+    try {
+        const page = await pdf.getPage(pageNum);
 
         // Calculate scale to fit within canvas while maintaining aspect ratio
         const viewport = page.getViewport({ scale: 1 });
@@ -161,6 +312,10 @@ async function processPDFFile(file) {
         tempCanvas.height = scaledViewport.height;
         const tempCtx = tempCanvas.getContext('2d');
 
+        // Fill white background
+        tempCtx.fillStyle = '#ffffff';
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
         // Render PDF page to temporary canvas
         await page.render({
             canvasContext: tempCtx,
@@ -171,22 +326,23 @@ async function processPDFFile(file) {
         const img = new Image();
         img.onload = () => {
             drawImageToCanvas(img);
-            uploadArea.classList.remove('loading');
         };
         img.src = tempCanvas.toDataURL('image/png');
 
     } catch (error) {
-        console.error('PDF/AI processing error:', error);
-
-        let errorMessage = 'PDF/AI 파일 처리 중 오류가 발생했습니다.';
-        if (error.message && error.message.includes('Invalid PDF')) {
-            errorMessage = 'AI 파일이 PDF 호환 모드로 저장되지 않았습니다.\nAdobe Illustrator에서 "PDF 호환 파일 만들기" 옵션을 활성화하여 다시 저장해주세요.';
-        }
-
-        alert(errorMessage);
-        uploadArea.classList.remove('loading');
-        clearCanvas();
+        console.error('Error rendering PDF page:', error);
+        alert('페이지 렌더링 중 오류가 발생했습니다.');
     }
+}
+
+/**
+ * Hide artboard selector section
+ */
+function hideArtboardSection() {
+    artboardSection.classList.remove('visible');
+    artboardGrid.innerHTML = '';
+    currentPDF = null;
+    selectedArtboard = null;
 }
 
 /**
@@ -236,6 +392,7 @@ function clearCanvas() {
     saveBtn.disabled = true;
     fileInfo.classList.remove('visible');
     fileInput.value = '';
+    hideArtboardSection();
 }
 
 /**
