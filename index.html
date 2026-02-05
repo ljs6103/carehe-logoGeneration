@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="기업 로고 가이드라인 준수 이미지 생성 및 AI 파일 변환 웹 도구">
+    <title>Logo Generator - 로고 이미지 생성기</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- PDF.js for AI/PDF file rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Logo Generator</h1>
+            <p class="subtitle">기업 로고 가이드라인 준수 이미지 생성 도구</p>
+        </header>
+
+        <!-- Upload Section -->
+        <section class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <h3>로고 파일을 여기에 드래그하세요</h3>
+                <p>또는 클릭하여 파일 선택</p>
+                <span class="supported-formats">지원 포맷: JPG, JPEG, PNG, PDF, AI</span>
+                <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf,.ai" hidden>
+            </div>
+            <div class="file-info" id="fileInfo">
+                <span class="file-name" id="fileName"></span>
+                <button class="btn-clear" id="clearBtn">✕</button>
+            </div>
+        </section>
+
+        <!-- Preview Canvas Section -->
+        <section class="preview-section">
+            <h2>프리뷰</h2>
+            <div class="canvas-wrapper">
+                <canvas id="previewCanvas" width="786" height="280"></canvas>
+                <div class="canvas-dimensions">786 × 280px</div>
+            </div>
+        </section>
+
+        <!-- AI Conversion Section -->
+        <section class="ai-section">
+            <div class="ai-info">
+                <div class="ai-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                </div>
+                <div class="ai-text">
+                    <h3>AI to PNG 변환</h3>
+                    <p>Adobe Illustrator(.ai) 파일을 PNG로 자동 변환합니다.<br>
+                    <small>※ PDF 호환 모드로 저장된 AI 파일만 지원됩니다.</small></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Action Buttons -->
+        <section class="action-section">
+            <button class="btn-save" id="saveBtn" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                저장하기
+            </button>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>© 2026 Logo Generator. 786×280px 규격 로고 이미지 생성기</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
